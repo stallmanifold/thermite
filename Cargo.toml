@@ -1,0 +1,11 @@
+[package]
+name = "thermite"
+version = "0.1.0"
+authors = ["Philipp Oppermann <dev@phil-opp.com>"]
+
+[dependencies]
+rlibc = "0.1.4"
+
+
+[lib]
+crate-type = ["staticlib"]

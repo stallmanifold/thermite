@@ -1,19 +1,36 @@
+# Copyright 2015 Philipp Oppermann
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 arch ?= x86_64
+target ?= $(arch)-unknown-linux-gnu
 kernel := build/kernel-$(arch).bin
 iso := build/os-$(arch).iso
 
+rust_os := target/$(target)/debug/libthermite.a
 linker_script := src/arch/$(arch)/linker.ld
 grub_cfg := src/arch/$(arch)/grub.cfg
 assembly_source_files := $(wildcard src/arch/$(arch)/*.asm)
 assembly_object_files := $(patsubst src/arch/$(arch)/%.asm, \
 	build/arch/$(arch)/%.o, $(assembly_source_files))
 
-.PHONY: all clean run iso
+.PHONY: all clean run iso cargo
 
 all: $(kernel)
 
 clean:
-	@rm -r build
+	@cargo clean
+	@rm -rf build
 
 run: $(iso)
 	@qemu-system-x86_64 -cdrom $(iso)
@@ -27,8 +44,12 @@ $(iso): $(kernel) $(grub_cfg)
 	@grub-mkrescue -o $(iso) build/isofiles 2> /dev/null
 	@rm -r build/isofiles
 
-$(kernel): $(assembly_object_files) $(linker_script)
-	@ld -n -T $(linker_script) -o $(kernel) $(assembly_object_files)
+$(kernel): cargo $(rust_os) $(assembly_object_files) $(linker_script)
+	@ld -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
+
+cargo:
+	# @cargo rustc --target $(target) -- -Z no-landing-pads
+	@multirust run nightly cargo build --target $(target) 
 
 # compile assembly files
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm
