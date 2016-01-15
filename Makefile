@@ -24,7 +24,7 @@ assembly_source_files := $(wildcard src/arch/$(arch)/*.asm)
 assembly_object_files := $(patsubst src/arch/$(arch)/%.asm, \
 	build/arch/$(arch)/%.o, $(assembly_source_files))
 
-.PHONY: all clean run iso cargo
+.PHONY: all clean run debug iso cargo
 
 all: $(kernel)
 
@@ -33,7 +33,10 @@ clean:
 	@rm -rf build
 
 run: $(iso)
-	@qemu-system-x86_64 -cdrom $(iso)
+	@qemu-system-x86_64 -cdrom $(iso) -s
+
+debug:
+	@qemu-system-x86_64 -s -S
 
 iso: $(iso)
 
@@ -49,7 +52,7 @@ $(kernel): cargo $(rust_os) $(assembly_object_files) $(linker_script)
 
 cargo:
 	# @cargo rustc --target $(target) -- -Z no-landing-pads
-	@multirust run nightly cargo build --target $(target) 
+	@@multirust run nightly cargo rustc --target $(target)  -- -Z no-landing-pads
 
 # compile assembly files
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm

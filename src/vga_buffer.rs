@@ -1,6 +1,37 @@
 use core::ptr::Unique;
+use spin::Mutex;
 
 
+const BUFFER_HEIGHT: usize = 25;
+const BUFFER_WIDTH: usize = 80;
+
+pub static WRITER: Mutex<Writer> = Mutex::new(
+    Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::LightGreen, Color::Black),
+        buffer: unsafe { Unique::new(0xb8000 as *mut _) },
+    }
+);
+
+macro_rules! println {
+    ($fmt:expr) => (print!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
+}
+
+macro_rules! print {
+    ($($arg:tt)*) => ({
+        use core::fmt::Write;
+        $crate::vga_buffer::WRITER.lock().write_fmt(format_args!($($arg)*)).unwrap();
+    });
+}
+
+pub fn clear_screen() {
+    for _ in 0..BUFFER_HEIGHT {
+        println!("");
+    }
+}
+
+#[allow(dead_code)]
 #[repr(u8)]
 pub enum Color {
     Black      = 0,
@@ -30,14 +61,12 @@ impl ColorCode {
     }
 }
 
+#[derive(Clone, Copy)]
 #[repr(C)]
 struct ScreenChar {
     ascii_character: u8,
     color_code: ColorCode,
 }
-
-const BUFFER_HEIGHT: usize = 25;
-const BUFFER_WIDTH: usize = 80;
 
 struct Buffer {
     chars: [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
@@ -50,12 +79,6 @@ pub struct Writer {
 }
 
 impl Writer {
-
-    pub fn write_str(&mut self, s: &str) {
-        for byte in s.bytes() {
-            self.write_byte(byte)
-        }
-    }
 
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
@@ -81,5 +104,31 @@ impl Writer {
         unsafe{ self.buffer.get_mut() }
     }
 
-    fn new_line(&mut self) {/* TODO */}
+    fn new_line(&mut self) {
+        for row in 0..(BUFFER_HEIGHT-1) {
+            let buffer = self.buffer();
+            buffer.chars[row] = buffer.chars[row + 1]
+        }
+        self.clear_row(BUFFER_HEIGHT-1);
+        self.column_position = 0;
+    }
+
+    fn clear_row(&mut self, row: usize) {
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: self.color_code,
+        };
+        self.buffer().chars[row] = [blank; BUFFER_WIDTH];
+}
+
+}
+
+impl ::core::fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> ::core::fmt::Result {
+        for byte in s.bytes() {
+            self.write_byte(byte)
+        }
+
+        Ok(())
+    }
 }
