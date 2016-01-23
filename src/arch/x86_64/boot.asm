@@ -90,6 +90,11 @@ check_long_mode:
 
 
 set_up_page_tables:
+    ; Recursively map P4
+    mov eax, p4_table
+    or eax, 0b11 ; present + writeable
+    mov [p4_table + 511 * 8], eax
+
     ; map first P4 entry to P3 table
     mov eax, p3_table
     or eax, 0b11 ; present + writable
@@ -172,7 +177,6 @@ error:
     mov dword [0xb8008], 0x4f204f20
     mov byte  [0xb800a], al
     hlt
-
 
 
 section .bss
