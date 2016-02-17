@@ -2,6 +2,7 @@ use self::paging::PhysicalAddress;
 
 pub use self::paging::test_paging;
 pub use self::area_frame_allocator::AreaFrameAllocator;
+pub use self::paging::remap_the_kernel;
 
 mod area_frame_allocator;
 mod paging;
