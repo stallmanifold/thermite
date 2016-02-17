@@ -191,6 +191,13 @@ pub fn remap_the_kernel<A>(allocator: &mut A, boot_info: &BootInformation)
                 let frame = Frame::containing_address(address);
                 mapper.identity_map(frame, flags, allocator);
             }
-        }    
+        }
+
+        // Identity map the VGA text buffer.
+        let vga_buffer_frame = Frame::containing_address(0xb8000);
+        mapper.identity_map(vga_buffer_frame, WRITABLE, allocator);    
     });
+
+    let old_table = active_table.switch(new_table);
+    println!("NEW TABLE!!!");
 }
