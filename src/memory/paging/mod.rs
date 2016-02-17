@@ -178,7 +178,7 @@ pub fn remap_the_kernel<A>(allocator: &mut A, boot_info: &BootInformation)
             println!("mapping section at addr: {:#x}, size: {:#x}",
                 section.addr, section.size);
 
-            let flags = WRITABLE; // TODO use real section flags
+            let flags = EntryFlags::from_elf_section_flags(section);
 
             let range = Range {
                 start: section.addr as usize,
@@ -200,4 +200,9 @@ pub fn remap_the_kernel<A>(allocator: &mut A, boot_info: &BootInformation)
 
     let old_table = active_table.switch(new_table);
     println!("NEW TABLE!!!");
+
+    // Turn the old p4 page table into a guard page.
+    let old_p4_page = Page::containing_address(old_table.p4_frame.start_address());
+    active_table.unmap(old_p4_page, allocator);
+    println!("guard page at {:#x}", old_p4_page.start_address());
 }
