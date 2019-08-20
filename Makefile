@@ -17,14 +17,14 @@ target ?= $(arch)-unknown-linux-gnu
 kernel := build/kernel-$(arch).bin
 iso := build/os-$(arch).iso
 
-rust_os := target/$(target)/debug/libthermite.a
+thermite_os := target/$(target)/debug/libthermite.a
 linker_script := src/arch/$(arch)/linker.ld
 grub_cfg := src/arch/$(arch)/grub.cfg
 assembly_source_files := $(wildcard src/arch/$(arch)/*.asm)
 assembly_object_files := $(patsubst src/arch/$(arch)/%.asm, \
 	build/arch/$(arch)/%.o, $(assembly_source_files))
 
-.PHONY: all clean run debug iso cargo
+.PHONY: all clean run debug build cargo
 
 all: $(kernel)
 
@@ -38,7 +38,7 @@ run: $(iso)
 debug:
 	@qemu-system-x86_64 -s -S
 
-iso: $(iso)
+build: $(iso)
 
 $(iso): $(kernel) $(grub_cfg)
 	@mkdir -p build/isofiles/boot/grub
@@ -47,12 +47,11 @@ $(iso): $(kernel) $(grub_cfg)
 	@grub-mkrescue -o $(iso) build/isofiles 2> /dev/null
 	@rm -r build/isofiles
 
-$(kernel): cargo $(rust_os) $(assembly_object_files) $(linker_script)
-	@ld -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(rust_os)
+$(kernel): cargo $(thermite_os) $(assembly_object_files) $(linker_script)
+	@ld -n --gc-sections -T $(linker_script) -o $(kernel) $(assembly_object_files) $(thermite_os)
 
 cargo:
-	# @cargo rustc --target $(target) -- -Z no-landing-pads
-	@@multirust run nightly cargo rustc --target $(target)  -- -Z no-landing-pads
+	@@rustup run nightly cargo rustc --target $(target)  -- -Z no-landing-pads
 
 # compile assembly files
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm
